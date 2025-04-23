@@ -25,6 +25,8 @@ export const getSock = (): WASocket => {
 	}
 	return sockInstance
 }
+
+let messagesUpsertInitialized = false
 // === Eventos do Socket ===
 export const initSocketEvents = (sock: WASocket, saveCreds: () => void) => {
 	setSock(sock) // salva globalmente aqui
@@ -53,19 +55,23 @@ export const initSocketEvents = (sock: WASocket, saveCreds: () => void) => {
 		}
 	})
 
-	sock.ev.on('messages.upsert', ({ messages }: { messages: WAMessage[] }) => {
-		for (const msg of messages) {
-			const isGroup = msg.key.remoteJid?.endsWith('@g.us')
-			const isStatus = msg.key.remoteJid === 'status@broadcast'
-			if (isGroup || isStatus) return
+	if (!messagesUpsertInitialized) {
+		messagesUpsertInitialized = true
 
-			const formatted = getMessage(msg)
-			if (formatted) {
-				// @ts-ignore
-				MessageHandler(sock, formatted)
+		sock.ev.on('messages.upsert', ({ messages }: { messages: WAMessage[] }) => {
+			for (const msg of messages) {
+				const isGroup = msg.key.remoteJid?.endsWith('@g.us')
+				const isStatus = msg.key.remoteJid === 'status@broadcast'
+				if (isGroup || isStatus) return
+
+				const formatted = getMessage(msg)
+				if (formatted) {
+					// @ts-ignore
+					MessageHandler(sock, formatted)
+				}
 			}
-		}
-	})
+		})
+	}
 
 	sock.ev.on('creds.update', saveCreds)
 }
